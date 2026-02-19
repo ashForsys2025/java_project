@@ -3,11 +3,14 @@ pipeline {
 
     tools {
         jdk 'JDK17'
+        maven 'Maven3'
     }
 
     environment {
-        TOMCAT_URL = "http://54.144.185.171:8081/"
-        APP_NAME   = "onlinebookstore"
+        TOMCAT_IP   = "localhost"
+        TOMCAT_PORT = "8081"
+        APP_NAME    = "onlinebookstore"
+        WAR_FILE    = "target/onlinebookstore.war"
     }
 
     stages {
@@ -18,40 +21,29 @@ pipeline {
             }
         }
 
-        stage('Build with Maven') {
+        stage('Build using Maven') {
             steps {
-                sh 'mvn -B -U -DskipTests clean package'
+                sh 'mvn clean package'
             }
         }
 
-        stage('Unit Tests') {
+        stage('Deploy WAR to Tomcat') {
             steps {
-                sh 'mvn test'
-            }
-        }
-
-        stage('Deploy to Tomcat') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'tomcat-creds',
-                                usernameVariable: 'TOMCAT_USER',
-                                passwordVariable: 'TOMCAT_PASS')]) {
-
-                    sh """
-                    curl -v -u $TOMCAT_USER:$TOMCAT_PASS \
-                    -T target/*.war \
-                    "$TOMCAT_URL/manager/text/deploy?path=/$APP_NAME&update=true"
-                    """
-                }
+                sh """
+                curl -v -u admin:admin123 \
+                -T ${WAR_FILE} \
+                "http://${TOMCAT_IP}:${TOMCAT_PORT}/manager/text/deploy?path=/${APP_NAME}&update=true"
+                """
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment successful!"
+            echo "✅ Deployment Successful!"
         }
         failure {
-            echo "❌ Build/Deploy failed!"
+            echo "❌ Deployment Failed!"
         }
     }
 }
